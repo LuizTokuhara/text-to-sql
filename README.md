@@ -74,7 +74,7 @@ The sidebar provides the following configuration options:
 - [Streamlit](https://streamlit.io/): For creating the interactive web application.
 - [pandas](https://pandas.pydata.org/): For handling and displaying tabular data.
 - [sqlite3](https://docs.python.org/3/library/sqlite3.html): For the in-memory SQLite database.
-- [google-generativeai](https://ai.google.dev/docs/reference/rest): The official Python library for the Google Gemini API.
+- [google-generativeai](https://googleapis.github.io/python-genai/): The official Python library for the Google Gemini API.
 - [python-dotenv](https://pypi.org/project/python-dotenv/): For loading environment variables from a `.env` file.
 
 ## ⚖️ Copyright and Disclaimer
