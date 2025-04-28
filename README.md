@@ -81,8 +81,6 @@ The sidebar provides the following configuration options:
 
 Please note that the sample data in the `client` table includes names of characters from the Harry Potter series. These names and the Harry Potter universe are copyright of Warner Bros. Entertainment Inc. and J.K. Rowling. This project uses these names solely for demonstration purposes and does not claim any ownership or affiliation with the Harry Potter franchise.
 
-The code in this project is open-source and available under the [MIT License](LICENSE).
-
 ## 🙏 Acknowledgements
 
 - This is a simple POC inspired by [Text 2 Sql](https://www.text2sql.ai/).
