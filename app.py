@@ -12,7 +12,8 @@ load_dotenv()
 MODEL = "gemini-2.0-flash"
 TEMPERATURE = 0.7
 SYSTEM_PROMPT = """You are an SQL expert. Given a natural language question, you will return the SQL query that answers it\n
-When searching for names, use the LOWER() function to perform case-insensitive matching. For example, use WHERE LOWER(column_name) = LOWER('search_term') instead of ILIKE."""
+When searching for names, use the LOWER() function to perform case-insensitive matching. For example, use WHERE LOWER(column_name) = LOWER('search_term') instead of ILIKE.\n
+When creating or updating a row, use RETURNING * to return the updated/saved information."""
 
 # --- Start the Google Gemini API client ---
 client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
@@ -20,7 +21,7 @@ client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 # ---- Create a demo database ----
 def setup_demo_database() -> sqlite3.Connection:
     # DB connection
-    conn = sqlite3.connect(':memory:')
+    conn = sqlite3.connect('database.db')
     c = conn.cursor()
 
     # Generate DB tables
@@ -45,7 +46,7 @@ def setup_demo_database() -> sqlite3.Connection:
     ''')
 
     # Seed data
-    c.executemany("INSERT INTO client VALUES (?, ?, ?, ?)", [
+    c.executemany("INSERT OR IGNORE INTO client VALUES (?, ?, ?, ?)", [
         (1, "Harry Potter", "harry@email.com", "2024-01-10"),
         (2, "Hermione Granger", "hermione@email.com", "2024-02-15"),
         (3, "Draco Malfoy", "draco@email.com", "2024-03-20"),
@@ -53,7 +54,7 @@ def setup_demo_database() -> sqlite3.Connection:
         (5, "Ron Weasley", "ron@email.com", "2024-05-12")
     ])
 
-    c.executemany("INSERT INTO orders VALUES (?, ?, ?, ?, ?)", [
+    c.executemany("INSERT OR IGNORE INTO orders VALUES (?, ?, ?, ?, ?)", [
         (1, 1, "Notebook", 3500.00, "2024-06-10"),
         (2, 2, "Smartphone", 2100.00, "2024-06-15"),
         (3, 3, "Monitor", 1200.00, "2024-07-05"),
@@ -128,11 +129,29 @@ def generate_sql_query(text_prompt: str, schema: Any) -> str:
 # ---- Execute query ----
 def execute_query(conn: sqlite3.Connection, query: str) -> (tuple[pd.DataFrame, None] | tuple[None, str]):
     try:
-        result = pd.read_sql_query(query, conn)
-        return result, None
+        cursor = conn.cursor()
+        query_lower = query.strip().lower()
+
+        if query_lower.startswith("select"):
+            result = pd.read_sql_query(query, conn)
+            return result, None
+
+        elif "returning" in query_lower:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+            columns = [description[0] for description in cursor.description]
+            conn.commit()
+            return pd.DataFrame(rows, columns=columns), None
+
+        else:
+            cursor.execute(query)
+            conn.commit()
+            return pd.DataFrame(), None
+
     except Exception as e:
         return None, str(e)
-  
+
+# ---- Explain the query result ----
 def explain_results(query: str, results: pd.DataFrame, user_prompt: str) -> str:
     if results is None or results.empty:
         return "No results found for the given query."
@@ -199,7 +218,7 @@ def process_query(prompt, schema, db_conn) -> None:
             explanation_container.subheader("Explanation:")
             explanation_container.write(explanation)
   
-  # Add response to history dictionary
+    # Add response to history dictionary
     st.session_state.messages.append({
         "role": "assistant",
         "content": {
@@ -225,11 +244,11 @@ def main() -> None:
     # Get DB schema
     schema = get_database_schema(db_conn)
 
-  # ---- Sidebar config -----
+    # ---- Sidebar config -----
     with st.sidebar:
         st.header("Configuration")
         st.slider("LLM Temperature", 0.0, 1.0, 0.7, 0.1, key="temperature_slider")
-        st.text_area("System prompt", SYSTEM_PROMPT, height=250, key="system_prompt")
+        st.text_area("System prompt", SYSTEM_PROMPT, height=350, key="system_prompt")
         st.divider()
 
         # Schemas
@@ -254,7 +273,7 @@ def main() -> None:
     if "messages" not in st.session_state:
         st.session_state.messages = []
   
-  # ---- Show message history ----
+    # ---- Show message history ----
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             if message["role"] == "user":
