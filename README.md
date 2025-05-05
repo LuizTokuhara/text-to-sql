@@ -84,5 +84,7 @@ Please note that the sample data in the `client` table includes names of charact
 ## 🙏 Acknowledgements
 
 - This is a simple POC inspired by [Text 2 Sql](https://www.text2sql.ai/).
+
+## Future improvements
 - Add Langchain for better control (in the near future).
 - Feel free to add more features.
